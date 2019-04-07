@@ -1,0 +1,57 @@
+create external table photo (business_id string, label string) row format delimited fields terminated by ',' location '~./yelp_academic_dataset_photo.json';
+select distinct business_id from photo;
+select distinct label from photo;
+describe photo;
+
+
+create external table checkin (day string, time string, count int, business_id string) row format delimited fields terminated by ',' location '~./checkin_sample';
+select * from checkin limit 5;
+select count(*) from checkin;
+  should sum all the count, not just count all the count
+select sum(checkin.count) from checkin;
+  281
+select distinct business_id from checkin;
+select count(distinct business_id) from checkin;
+
+create external table review (business_id string, user_id string, useful int, stars int) row format delimited fields terminated by ',' location '~./review';
+select distinct business_id from review;
+select * from review limit 5;
+select count(*) from review limit 5;
+
+create external table user (user_id string, review_count int, compliment int) row format delimited fields terminated by ',' location '~./user';
+select * from user limit 5;
+select count(*) from user;
+select count(distinct user_id) from user;
+
+create external table business (business_id string, name string, city string, state string, stars int) row format delimited fields terminated by ',' location '~./business';
+create external table businesswithCount (business_id string, name string, city string, state string, stars int, review_count int) row format delimited fields terminated by ',' location '~./businesswithCount';
+  select count(*) from businesswithCount where review_count>1;
+    188310
+  select count(*) from businesswithCount where review_count>10;
+    82875
+  select count(*) from businesswithCount where review_count>20;
+    52450
+
+CREATE VIEW IF NOT EXISTS businesswithcountId as
+SELECT
+    row_number() OVER (ORDER BY stars desc) AS id,
+    business_id, name, stars, review_count
+  FROM businesswithCount where review_count>10;
+
+SELECT
+    row_number() OVER () AS id,
+    business_id, count
+  FROM checkin2 limit 10;
+
+CREATE VIEW IF NOT EXISTS checkinwithId as
+SELECT
+    row_number() OVER () AS id,
+    business_id, count
+  FROM checkin2;
+
+CREATE VIEW IF NOT EXISTS finalRankingwithId as
+SELECT
+    row_number() OVER (order by finalnorm desc) AS id,
+    business_id, finalnorm
+  FROM finalRankingwithId;
+  

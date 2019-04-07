@@ -1,0 +1,21 @@
+scp -r ~/Downloads/yelp_dataset/ *****@dumbo.es.its.nyu.edu:/home/*****/
+
+hdfs dfs -mkdir project/photo
+hdfs dfs -put yelp_academic_dataset_photo ~./photo
+
+
+hdfs dfs -mkdir project/checkin
+hdfs dfs -put impala_format_input_checkin ~./checkin
+
+
+hdfs dfs -mkdir project/review
+hdfs dfs -put impala_format_input_review ~./review
+
+hdfs dfs -mkdir project/user
+hdfs dfs -put impala_format_input_user ~./user
+
+hdfs dfs -mkdir project/business
+hdfs dfs -put impala_format_input_business ~./business
+
+
+

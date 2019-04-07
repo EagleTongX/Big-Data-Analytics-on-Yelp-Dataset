@@ -1,0 +1,13 @@
+I download the code to my local workstation from yelp website. And use the following commands to put it into HDFS on Dumbo.
+
+Commands: 
+
+scp -r /Users/tongxin/Dropbox/MS-CEI/RBDA/project/yelp_academic_dataset_checkin.json xt548@dumbo.es.its.nyu.edu:/home/xt548/
+
+ssh xt548@gw.hpc.nyu.edu
+
+ssh dumbo
+
+hdfs dfs -mkdir /user/xt548/project
+
+hdfs dfs -put yelp_academic_dataset_checkin.json /user/xt548/project

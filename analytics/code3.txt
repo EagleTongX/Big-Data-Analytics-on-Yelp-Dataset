@@ -1,0 +1,190 @@
+review
+
+impala_format_input_review
+impala_format_input_user
+ingest to dumbo
+build table in dumbo
+build analysis code for review
+three table join
+
+
+---
+
+review
+  business_id, user_id, useful, stars
+user
+  user_id
+  review_count
+  compliment
+business
+  business_id, name, city,state, stars, review_count
+
+hdfs dfs -mkdir project/review_sample
+hdfs dfs -put impala_format_input_review_sample project/review_sample
+hdfs dfs -ls project/review_sample
+
+hdfs dfs -mkdir project/user_sample
+hdfs dfs -put impala_format_input_user_sample project/user_sample
+hdfs dfs -ls project/user_sample
+
+create external table review_sample (business_id string, user_id string, useful int, stars int) row format delimited fields terminated by ',' location '/user/xt548/project/review_sample';
+select distinct business_id from review_sample;
+select * from review_sample limit 5;
+
+create external table user_sample (user_id string, review_count int, compliment int) row format delimited fields terminated by ',' location '/user/xt548/project/user_sample';
+select * from user_sample limit 5;
+
+select rs.useful, rs.user_id, rs.business_id, rs.stars, us.review_count, us.compliment from user_sample as us, review_sample as rs where rs.user_id=us.user_id;
+calculate score for userX for businessY
+  select rs.stars*(0.6*rs.useful+0.4*us.compliment)/us.review_count as score, rs.user_id, rs.business_id from user_sample as us, review_sample as rs where rs.user_id=us.user_id;
+aggregate all scores for businessY
+
+---
+hdfs dfs -mkdir project/review
+hdfs dfs -put impala_format_input_review project/review
+hdfs dfs -ls project/review
+
+hdfs dfs -mkdir project/user
+hdfs dfs -put impala_format_input_user project/user
+hdfs dfs -ls project/user
+
+create external table review (business_id string, user_id string, useful int, stars int) row format delimited fields terminated by ',' location '/user/xt548/project/review';
+select distinct business_id from review;
+select * from review limit 5;
+select count(*) from review limit 5;
+
+create external table user (user_id string, review_count int, compliment int) row format delimited fields terminated by ',' location '/user/xt548/project/user';
+select * from user limit 5;
+select count(*) from user;
+select count(distinct user_id) from user;
+
+select review.useful, review.user_id, review.business_id, review.stars, user.review_count, user.compliment from user, review where user.user_id=review.user_id;
+calculate score for userX for businessY
+  select review.stars*(0.6*review.useful+0.4*user.compliment)/user.review_count as score, review.user_id, review.business_id from user, review where review.user_id=user.user_id order by score DESC limit 10;
+
+aggregate all scores for businessY
+  CREATE VIEW IF NOT EXISTS reviewRankingpre AS select review.stars*(0.6*review.useful+0.4*user.compliment)/user.review_count as score, review.user_id, review.business_id from user, review where review.user_id=user.user_id;
+
+  CREATE VIEW IF NOT EXISTS reviewRanking AS select sum(review.stars*(0.6*review.useful+0.4*user.compliment)/user.review_count) as score, review.business_id from user, review where review.user_id=user.user_id group by review.business_id;
+  select * from reviewRanking order by score DESC limit 5;
+
+
+---
+three table join
+
+select photoranking.business_id, 0.5*photoranking.normcount+0.2*checkinRanking.normcount+0.3*reviewRanking.score as finalnorm from photoRanking, checkinRanking, reviewRanking where photoranking.business_id=checkinRanking.business_id and photoranking.business_id=reviewRanking.business_id order by finalnorm limit 10;
+
+create table finalRanking as select photoranking.business_id, 0.5*photoranking.normcount+0.2*checkinRanking.normcount+0.3*reviewRanking.score as finalnorm from photoRanking, checkinRanking, reviewRanking where photoranking.business_id=checkinRanking.business_id and photoranking.business_id=reviewRanking.business_id;
+select count(*) from finalRanking;
+select * from finalRanking order by finalnorm desc limit 10;
+
+32,538 rows selected (242.262 seconds)
+  only 32538 business has reviews??
+---
+comparing
+overlap
+  ranking first 100
+  ranking first 1000
+  ranking first 10000
+checkin
+  choose 10%
+    business_id，ranking_id,sum
+    for the most visited places, 
+      combine combined ranking in yelp with our ranking system.
+
+
+hdfs dfs -mkdir project/business
+hdfs dfs -put impala_format_input_business project/business
+hdfs dfs -ls project/business
+
+create external table business (business_id string, name string, city string, state string, stars int) row format delimited fields terminated by ',' location '/user/xt548/project/business';
+
+hdfs dfs -mkdir project/businesswithCount
+hdfs dfs -put impala_format_input_business project/businesswithCount
+hdfs dfs -ls project/businesswithCount
+
+create external table businesswithCount (business_id string, name string, city string, state string, stars int, review_count int) row format delimited fields terminated by ',' location '/user/xt548/project/businesswithCount';
+  select count(*) from businesswithCount where review_count>1;
+    188310
+  select count(*) from businesswithCount where review_count>10;
+    82875
+  select count(*) from businesswithCount where review_count>20;
+    52450
+
+
+select distinct business_id from business;
+select * from business limit 5;
+select count(*) from business;
+  188593
+select stars, name from business order by stars DESC limit 10;
+
+select row_number() over(),* from business limit 10;
+SELECT
+    row_number() OVER (ORDER BY stars desc) AS id,
+    business_id, name, stars
+  FROM business limit 10;
+
+CREATE VIEW IF NOT EXISTS businesswithId as
+SELECT
+    row_number() OVER (ORDER BY stars desc) AS id,
+    business_id, name, stars
+  FROM business;
+
+CREATE VIEW IF NOT EXISTS businesswithcountId as
+SELECT
+    row_number() OVER (ORDER BY stars desc) AS id,
+    business_id, name, stars, review_count
+  FROM businesswithCount where review_count>10;
+
+SELECT
+    row_number() OVER () AS id,
+    business_id, count
+  FROM checkin2 limit 10;
+
+CREATE VIEW IF NOT EXISTS checkinwithId as
+SELECT
+    row_number() OVER () AS id,
+    business_id, count
+  FROM checkin2;
+
+CREATE VIEW IF NOT EXISTS finalRankingwithId as
+SELECT
+    row_number() OVER (order by finalnorm desc) AS id,
+    business_id, finalnorm
+  FROM finalRankingwithId;
+
+select businesswithId.id,checkinwithId.business_id from checkinwithId, businesswithId
+where checkinwithId.id%10=0 and checkinwithId.business_id= businesswithId.business_id limit 10;
+
+yelp business ranking
+  select sum(businesswithId.id) from checkinwithId, businesswithId
+  where checkinwithId.id%10=0 and businesswithId.review_count>10 and checkinwithId.business_id= businesswithId.business_id;
+  +--------------+--+
+  | 41073137800  |
+  +--------------+--+
+  1 row selected (119.201 seconds)
+
+  select sum(businesswithcountId.id) from checkinwithId, businesswithcountId
+  where checkinwithId.id%10=0 and businesswithcountId.review_count>10 and checkinwithId.business_id= businesswithcountId.business_id;
+  |     _c0      |
+  +--------------+--+
+  | 32719129522  |
+  +--------------+--+
+  1 row selected (126.073 seconds)
+  
+  +--------------+--+
+  |     _c0      |
+  +--------------+--+
+  | 14671290436  |
+  +--------------+--+
+our ranking
+  select sum(finalRankingwithId.id) from checkinwithId, finalRankingwithId where checkinwithId.id%10=0 and checkinwithId.business_id= finalRankingwithId.business_id;
+  
+  select finalRankingwithId.id,checkinwithId.business_id from checkinwithId, finalRankingwithId where checkinwithId.id%10=0 and checkinwithId.business_id= finalRankingwithId.business_id limit 10;
+
+  |     _c0     |
+  +-------------+--+
+  | 1692539414  |
+  +-------------+--+
+  1 row selected (116.796 seconds)
+

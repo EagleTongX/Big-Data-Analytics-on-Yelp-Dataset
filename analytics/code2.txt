@@ -1,0 +1,61 @@
+checkin
+one week checkin data
+schema: day, time, count, business_id
+
+ingest
+  impala_format_input_checkin_sample
+  hdfs dfs -mkdir project/checkin_sample
+  hdfs dfs -put impala_format_input_checkin_sample project/checkin_sample
+  hdfs dfs -ls project/checkin
+all:
+  hdfs dfs -mkdir project/checkin
+  hdfs dfs -put impala_format_input_checkin project/checkin
+  hdfs dfs -ls project/checkin
+
+process:
+sample:
+  create external table checkin (day string, time string, count int, business_id string) row format delimited fields terminated by ',' location '/user/xt548/project/checkin_sample';
+  select * from checkin limit 5;
+
+  select count(*) from checkin;
+    should sum all the count, not just count all the count
+  select sum(checkin.count) from checkin;
+    281
+  select distinct business_id from checkin;
+  select count(distinct business_id) from checkin;
+    10
+
+  avg checkin per restaurant per week
+  select business_id, sum(checkin.count)/281*10 as normCount from checkin group by business_id order by normCount;
+
+  store state:
+  CREATE VIEW IF NOT EXISTS checkinRanking AS select business_id, count(*)/281*10 as normCount from checkin group by business_id order by normCount;
+all:
+  create external table checkin2 (day string, time string, count int, business_id string) row format delimited fields terminated by ',' location '/user/xt548/project/checkin';
+  select * from checkin2 limit 5;
+  select count(*) from checkin2;
+    4171864
+  select sum(checkin2.count) from checkin2;
+    17915884
+  select count(distinct business_id) from checkin2;
+    157075
+
+  select business_id, sum(checkin2.count)/17915884*157075 as normCount from checkin2 group by business_id order by normCount;
+
+  store state:
+  CREATE VIEW IF NOT EXISTS checkinRanking AS select business_id, sum(checkin2.count)/17915884*157075 as normCount from checkin2 group by business_id order by normCount;
+  select * from checkinRanking order by normCount DESC limit 5;
+
+| checkinranking.business_id  | checkinranking.normcount  |
++-----------------------------+---------------------------+--+
+| uGupeWqih0yIcCg8anM1PA      | 6.325373981510424         |
+| NY80DkkCfEl198JmwtO4pA      | 6.325373981510424         |
+| O3lQvyOADBs7f2W8A5D0Yg      | 6.325373981510424         |
+| bsrj9_hFAql3dlSf244zpg      | 6.325373981510424         |
+| I6ICIIZfZsp_J9hHmfhWhQ      | 6.325373981510424
+
+--
+two table join
+
+select photoranking.business_id, 0.5*photoranking.normcount+0.2*checkinRanking.normcount as finalnorm from photoRanking, checkinRanking where photoranking.business_id=checkinRanking.business_id order by finalnorm;
+

@@ -1,0 +1,39 @@
+create external table photo (business_id string, label string) row format delimited fields terminated by ',' location '/user/xt548/project/yelp_academic_dataset_photo.json';
+select distinct business_id from photo;
+select distinct label from photo;
+describe photo;
+
+
+---
+photo2
+
+hdfs dfs -ls project
+beeline
+!connect jdbc:hive2://babar.es.its.nyu.edu:10000/
+use xt548;
+show tables;
+
+hdfs dfs -ls project/input
+
+create external table photo2 (business_id string, label string) row format delimited fields terminated by ',' location '/user/xt548/project/impala_input';
+select distinct business_id from photo2;
+
+select distinct business_id from photo;
+select distinct business_id from photo;
+select * from photo2 limit 2;
+
+select business_id, count(*) as count from photo2 group by business_id order by count;
+select count(*) from photo2;
+  280992
+select distinct business_id from photo2;
+select count(distinct business_id) from photo2;
+  32976
+avg
+  #records/#business_id
+normalization
+  select business_id, count(*)/280992*32976 as normCount from photo2 group by business_id order by normCount;
+
+store state:
+CREATE VIEW IF NOT EXISTS photoRanking AS select business_id, count(*)/280992*32976 as normCount from photo2 group by business_id order by normCount;
+select * from photoRanking order by normcount DESC limit 5 ;
+
